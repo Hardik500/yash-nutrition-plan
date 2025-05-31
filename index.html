@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yashaswini's Nutritional Blueprint Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices: 
+        - Lab Values (ESR, Hb, Serum Iron, % Transferrin Sat.): Goal: Inform, Compare. Viz: Chart.js bar charts (value vs. ref range). Interaction: Hover for tooltips. Justification: Quick visual status of key abnormal markers. Library: Chart.js.
+        - Detailed Lab Values (Table 1): Goal: Inform, Detail. Viz: Interactive HTML table. Interaction: Click row for significance/implication. Justification: On-demand deep dive.
+        - Core Principles, Nutrient Optimisation (Iron, Inflammation, Foundational), Lifestyle: Goal: Educate, Guide. Viz: Accordion sections. Interaction: Click to expand/collapse. Justification: Manages information density, allows focused reading.
+        - Iron-Rich Foods (Table 2), Anti-Inflammatory Foods (Table 3): Goal: Reference, Inform. Viz: HTML tables within accordions. Interaction: Sortable (for Table 2). Justification: Easy lookup and comparison.
+        - Meal Plan Frameworks (Tables 4 & 5): Goal: Guide, Structure. Viz: HTML tables. Justification: Clear weekly overview.
+        - Meal Suggestions (South & North Indian): Goal: Inspire, Guide. Viz: Accordion sections for each meal type. Interaction: Click to expand. Justification: Organized and detailed options.
+        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* A clean, modern sans-serif font */
+        }
+        /* Custom scrollbar for horizontal nav on small screens */
+        #mainNav::-webkit-scrollbar {
+            height: 4px;
+        }
+        #mainNav::-webkit-scrollbar-thumb {
+            background-color: #fbbf24; /* amber-400 */
+            border-radius: 10px;
+        }
+        #mainNav::-webkit-scrollbar-track {
+            background-color: #fef3c7; /* amber-100 */
+        }
+        .nav-button {
+            @apply px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm rounded-md font-medium transition-colors duration-150 ease-in-out whitespace-nowrap;
+        }
+        .nav-button-active {
+            @apply bg-emerald-600 text-white;
+        }
+        .nav-button-inactive {
+            @apply bg-amber-100 text-emerald-700 hover:bg-emerald-200;
+        }
+        .page-section {
+            @apply p-4 sm:p-6 bg-white rounded-lg shadow-lg mb-8;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Slightly reduced max-width for better fit in 2-column layouts */
+            margin-left: auto;
+            margin-right: auto;
+            height: 280px; /* Adjusted base height */
+            max-height: 350px; /* Adjusted max-height */
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 320px; /* Adjusted for md screens */
+            }
+        }
+        .accordion-button {
+            @apply w-full text-left px-4 py-3 bg-amber-100 hover:bg-amber-200 text-emerald-700 font-semibold rounded-t-lg focus:outline-none transition-colors duration-150 ease-in-out flex justify-between items-center;
+        }
+        .accordion-content {
+            @apply bg-white p-4 rounded-b-lg border border-t-0 border-amber-200;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-content.open {
+            max-height: 2000px; /* Increased to accommodate potentially long content like tables */
+            transition: max-height 0.5s ease-in;
+        }
+        .info-card {
+            @apply bg-amber-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow;
+        }
+        /* Table styling for readability */
+        th, td {
+            @apply px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-200 text-xs sm:text-sm;
+        }
+        thead th {
+            @apply bg-amber-100 text-emerald-700 font-semibold uppercase tracking-wider text-left;
+        }
+        tbody tr:hover {
+            @apply bg-amber-50;
+        }
+        .table-container {
+            @apply overflow-x-auto bg-white rounded-lg shadow;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-gray-800">
+
+    <div class="container mx-auto p-2 sm:p-4 min-h-screen">
+        <header class="text-center py-6 sm:py-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-emerald-700">Yashaswini's Nutritional Blueprint Explorer</h1>
+            <p class="text-gray-600 mt-2 text-sm sm:text-base">An interactive guide to your personalized South & North Indian dietary plan.</p>
+        </header>
+
+        <nav id="mainNav" class="flex justify-start sm:justify-center space-x-1 sm:space-x-2 mb-8 bg-white p-3 rounded-lg shadow-md sticky top-2 z-50 overflow-x-auto">
+            <button data-section="snapshot" class="nav-button nav-button-active">Snapshot</button>
+            <button data-section="labInsights" class="nav-button nav-button-inactive">Lab Insights</button>
+            <button data-section="dietaryStrategy" class="nav-button nav-button-inactive">Diet Strategy</button>
+            <button data-section="mealPlanSouth" class="nav-button nav-button-inactive">South Indian Plan</button>
+            <button data-section="mealPlanNorth" class="nav-button nav-button-inactive">North Indian Plan</button>
+            <button data-section="lifestyle" class="nav-button nav-button-inactive">Lifestyle</button>
+        </nav>
+
+        <main>
+            <section id="snapshot" class="page-section">
+                <h2 class="text-2xl font-semibold text-emerald-700 mb-4">Health Snapshot & Key Goals</h2>
+                <p class="mb-6 text-gray-700">This section provides a quick overview of the key findings from your lab report dated May 21, 2025, and outlines the primary dietary goals. Your report indicates a need to focus on addressing iron deficiency and reducing inflammation. This blueprint offers both South and North Indian vegetarian options to support your journey.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="info-card">
+                        <h3 class="text-xl font-semibold text-emerald-600 mb-2">🎯 Primary Goal 1: Boost Iron Levels</h3>
+                        <p class="text-gray-600">Your lab results show indicators of iron deficiency anemia. This dietary plan focuses on iron-rich foods and strategies to maximize iron absorption.</p>
+                    </div>
+                    <div class="info-card">
+                        <h3 class="text-xl font-semibold text-emerald-600 mb-2">🌿 Primary Goal 2: Reduce Inflammation</h3>
+                        <p class="text-gray-600">Your Erythrocyte Sedimentation Rate (ESR) is elevated, suggesting inflammation. The diet incorporates foods and spices with anti-inflammatory properties.</p>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold text-emerald-600 mb-3">Key Lab Indicators at a Glance:</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="chart-container bg-white p-3 rounded-lg shadow"><canvas id="esrChart"></canvas></div>
+                    <div class="chart-container bg-white p-3 rounded-lg shadow"><canvas id="hbChart"></canvas></div>
+                    <div class="chart-container bg-white p-3 rounded-lg shadow"><canvas id="serumIronChart"></canvas></div>
+                    <div class="chart-container bg-white p-3 rounded-lg shadow"><canvas id="transferrinSatChart"></canvas></div>
+                </div>
+            </section>
+
+            <section id="labInsights" class="page-section hidden">
+                <h2 class="text-2xl font-semibold text-emerald-700 mb-4">Lab Insights: Understanding Your Results</h2>
+                <p class="mb-6 text-gray-700">Explore a detailed breakdown of your key lab values from the May 21, 2025 report (Table 1 from your blueprint). Understanding these results is the first step towards targeted nutritional intervention. Click on a parameter for more details on its clinical significance and dietary implications for you.</p>
+                <div class="table-container mb-6">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Your Value</th>
+                                <th>Reference Interval</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="labValuesTableBody">
+                            </tbody>
+                    </table>
+                </div>
+                <div id="labDetailView" class="mt-6 p-4 bg-amber-50 rounded-lg shadow hidden">
+                    <h3 id="labDetailParam" class="text-xl font-semibold text-emerald-600 mb-2"></h3>
+                    <p id="labDetailSignificance" class="text-gray-700 mb-2"></p>
+                    <p id="labDetailDietImplication" class="text-gray-700 font-medium"></p>
+                </div>
+                 <p class="mt-6 text-sm text-gray-600"><strong>Contextual Importance of Normal Parameters:</strong> Your report also showed normal Fasting Blood Sugar, Lipid Profile, Kidney Function (eGFR), and Thyroid Profile. This is advantageous as it allows the dietary plan to be highly focused on iron and inflammation without managing co-existing metabolic conditions. For instance, normal kidney function supports adequate protein intake from plant sources like lentils, crucial for many iron-rich dishes.</p>
+            </section>
+
+            <section id="dietaryStrategy" class="page-section hidden">
+                <h2 class="text-2xl font-semibold text-emerald-700 mb-4">Your Personalized Dietary Strategy</h2>
+                <p class="mb-6 text-gray-700">This section outlines the core principles and specific strategies of your Indian vegetarian diet plan, applicable to both South and North Indian culinary styles, designed to boost iron levels and reduce inflammation. The interplay between inflammation and iron status is also crucial; reducing inflammation can improve iron absorption.</p>
+                <div id="corePrinciplesAccordion" class="mb-6"></div>
+                <div id="nutrientOptimisationAccordion" class="mb-6"></div>
+            </section>
+
+            <section id="mealPlanSouth" class="page-section hidden">
+                <h2 class="text-2xl font-semibold text-emerald-700 mb-4">South Indian Meal Plan & Food Guide</h2>
+                <p class="mb-6 text-gray-700">Discover your sample 7-day South Indian meal plan framework (Table 4 from your blueprint) and detailed suggestions for breakfast, lunch, dinner, and snacks. This plan incorporates iron-rich and anti-inflammatory South Indian vegetarian dishes, excluding paneer and soya.</p>
+                
+                <h3 class="text-xl font-semibold text-emerald-600 mb-3">Sample 7-Day South Indian Meal Plan Framework</h3>
+                <div class="table-container mb-6">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Breakfast</th>
+                                <th>Mid-Snack</th>
+                                <th>Lunch</th>
+                                <th>Eve-Snack</th>
+                                <th>Dinner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mealPlanSouth7DayTableBody"></tbody>
+                    </table>
+                </div>
+
+                <h3 class="text-xl font-semibold text-emerald-600 mb-3 mt-6">Detailed South Indian Meal Suggestions</h3>
+                <div id="mealSuggestionsSouthAccordion"></div>
+            </section>
+            
+            <section id="mealPlanNorth" class="page-section hidden">
+                <h2 class="text-2xl font-semibold text-emerald-700 mb-4">North Indian Meal Plan & Food Guide</h2>
+                <p class="mb-6 text-gray-700">Explore your sample 7-day North Indian meal plan framework (Table 5 from your blueprint) and detailed suggestions. This plan also focuses on iron-rich, anti-inflammatory vegetarian dishes, excluding paneer and soya, offering variety to your diet.</p>
+                
+                <h3 class="text-xl font-semibold text-emerald-600 mb-3">Sample 7-Day North Indian Meal Plan Framework</h3>
+                <div class="table-container mb-6">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Breakfast</th>
+                                <th>Mid-Snack</th>
+                                <th>Lunch</th>
+                                <th>Eve-Snack</th>
+                                <th>Dinner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mealPlanNorth7DayTableBody"></tbody>
+                    </table>
+                </div>
+
+                <h3 class="text-xl font-semibold text-emerald-600 mb-3 mt-6">Detailed North Indian Meal Suggestions</h3>
+                <div id="mealSuggestionsNorthAccordion"></div>
+            </section>
+
+            <section id="lifestyle" class="page-section hidden">
+                <h2 class="text-2xl font-semibold text-emerald-700 mb-4">Lifestyle, Monitoring & Long-Term Wellness</h2>
+                <p class="mb-6 text-gray-700">Beyond diet, certain lifestyle strategies and consistent monitoring are vital for holistic well-being and sustained success in managing your health.</p>
+                <div id="lifestyleAccordionContainer"></div>
+            </section>
+        </main>
+
+        <footer class="text-center py-8 mt-10">
+            <p class="text-sm text-gray-500">Data derived from "Personalized Nutritional Blueprint for Yashaswini Chellur". This tool is for informational purposes and does not replace medical advice. Consult your healthcare provider for any medical concerns.</p>
+        </footer>
+    </div>
+
+    <script>
+        const reportData = {
+            labValues: [
+                { parameter: "ESR", value: 50, unit: "mm/hr", refInterval: "0-20 (Female)", status: "High", significance: "Significantly elevated, indicating a notable level of inflammation. The dietary plan aims to reduce this through anti-inflammatory foods.", dietImplication: "Prioritize potent anti-inflammatory foods & spices (turmeric, ginger, garlic)." },
+                { parameter: "Hemoglobin (Hb)", value: 11.7, unit: "g/dL", refInterval: "12.0-15.0 (Female)", status: "Low", significance: "Below normal range, primary indicator of anemia, affecting oxygen transport.", dietImplication: "Intensify iron-rich food intake; focus on enhancing bioavailability with Vitamin C." },
+                { parameter: "MCV", value: 81.8, unit: "fL", refInterval: "83.0-101.0", status: "Low", significance: "Slightly below normal, suggests smaller red blood cells (microcytosis), characteristic of iron deficiency anemia.", dietImplication: "Confirms need for iron. Focus on iron-rich millets, lentils, greens." },
+                { parameter: "MCH", value: 26.4, unit: "pg", refInterval: "27.0-32.0", status: "Low", significance: "Below normal, reduced hemoglobin per red blood cell (hypochromia), typical of iron deficiency anemia.", dietImplication: "Reinforces need for iron-rich diet and absorption enhancers." },
+                { parameter: "Serum Iron", value: 48, unit: "µg/dL", refInterval: "50-170 (Female)", status: "Low", significance: "Depleted circulating iron stores, a key feature of iron deficiency.", dietImplication: "Requires aggressive dietary repletion with iron-dense foods." },
+                { parameter: "% Transferrin Saturation", value: 12, unit: "%", refInterval: "13-45", status: "Low", significance: "Sensitive marker for iron deficiency, indicating less iron being transported.", dietImplication: "Focus on strategies to enhance iron absorption from all meals." }
+            ],
+            keyAbnormalValuesForChart: [
+                { label: "ESR", value: 50, refLow: 0, refHigh: 20, unit: "mm/hr" },
+                { label: "Hemoglobin", value: 11.7, refLow: 12.0, refHigh: 15.0, unit: "g/dL" },
+                { label: "Serum Iron", value: 48, refLow: 50, refHigh: 170, unit: "µg/dL" },
+                { label: "% Transferrin Sat.", value: 12, refLow: 13, refHigh: 45, unit: "%" }
+            ],
+            corePrinciples: [
+                { title: "Prioritize Whole, Unprocessed Foods", content: "Emphasis on fresh vegetables (especially dark leafy greens), legumes, lentils, millets, whole grains, nuts, seeds, and fruits." },
+                { title: "Strategic Use of Traditional Spices", content: "Liberal use of turmeric (with black pepper), ginger, and garlic for their potent anti-inflammatory properties." },
+                { title: "Maximize Iron Bioavailability", content: "Systematically pair iron-rich plant foods with Vitamin C sources (lemon, amla, tomatoes). Mitigate iron absorption inhibitors (phytates, oxalates, tannins) through soaking, sprouting, fermentation, and timing of beverages." },
+                { title: "Incorporate Healthy Fats", content: "Include sources of plant-based omega-3 fatty acids (ALA) like walnuts, flaxseeds, and chia seeds." },
+                { title: "Adequate Hydration", content: "Drink primarily water, supplemented by traditional hydrating beverages." },
+                { title: "Dietary Variety and Rotation", content: "Consume a wide variety of foods to obtain a broad spectrum of nutrients and promote a healthy gut microbiome." },
+                { title: "Mindful Eating Practices", content: "Eat in a calm environment and chew food thoroughly to aid digestion." }
+            ],
+            nutrientOptimisation: {
+                iron: {
+                    title: "Unlocking Iron: Maximizing Absorption",
+                    points: [
+                        "<strong>The Challenge of Non-Heme Iron:</strong> Iron from plant foods is less bioavailable. Vegetarians may need higher overall iron intake.",
+                        "<strong>Crucial Role of Vitamin C:</strong> Vitamin C (lemon, tomatoes, amla) significantly enhances non-heme iron absorption. Include with every iron-rich meal.",
+                        "<strong>Mitigating Inhibitors:</strong> Phytates (grains, legumes), Oxalates (spinach), and Tannins (tea/coffee) hinder iron absorption. Use soaking, sprouting, fermentation, cooking, and timing of tea/coffee to reduce their impact."
+                    ],
+                    table: {
+                        id: "ironRichFoodsTable",
+                        headers: ["Food Source", "Approx. Iron (mg/100g raw)", "Vit C Pairings", "Inhibitors", "Mitigation"],
+                        rows: [
+                            { food: "Ragi (Finger Millet)", iron: "3-5.4+ mg", vitC: "Lemon, Tomato", inhibitors: "Phytates", mitigation: "Ferment, Sprout" },
+                            { food: "Moringa Leaves", iron: "7-28 mg", vitC: "Naturally present; Lemon", inhibitors: "Low Oxalates", mitigation: "Cook lightly" },
+                            { food: "Spinach (Palak)", iron: "2.7 mg", vitC: "Lemon, Tomato", inhibitors: "Oxalates, Phytates", mitigation: "Cook well, rotate" },
+                            { food: "Fenugreek Leaves (Methi)", iron: "33.53 mg", vitC: "Lemon, Tomato", inhibitors: "Minimal", mitigation: "Cook well" },
+                            { food: "Lentils (e.g., Moong)", iron: "6.7 mg", vitC: "Lemon, Tomato", inhibitors: "Phytates", mitigation: "Soak, Cook, Sprout" },
+                            { food: "Chickpeas (Chana)", iron: "6.2 mg", vitC: "Lemon, Tomato", inhibitors: "Phytates", mitigation: "Soak, Cook" },
+                            { food: "Sesame Seeds (Til)", iron: "14.6 mg", vitC: "Pair meal with Vit C", inhibitors: "Phytates", mitigation: "Roast" }
+                        ]
+                    }
+                },
+                inflammation: {
+                    title: "Quelling Inflammation: Dietary Bioactives",
+                    points: [
+                        "<strong>Anti-Inflammatory Spices:</strong> Turmeric (with black pepper), Ginger (gingerols), Garlic (allicin) modulate inflammatory pathways.",
+                        "<strong>Omega-3 Fatty Acids:</strong> ALA from walnuts, flaxseeds, chia seeds acts as a precursor to anti-inflammatory compounds.",
+                        "<strong>Antioxidant-Rich Foods:</strong> Brightly colored fruits and vegetables combat oxidative stress."
+                    ],
+                    table: {
+                        id: "antiInflammatoryFoodsTable",
+                        headers: ["Food/Spice", "Active Compound(s)", "Action (Relevant to ESR)"],
+                        rows: [
+                            { food: "Turmeric", compound: "Curcumin", action: "Inhibits NF-κB, reduces pro-inflammatory cytokines." },
+                            { food: "Ginger", compound: "Gingerols, Shogaols", action: "Inhibits COX & 5-LOX enzymes." },
+                            { food: "Garlic", compound: "Allicin", action: "Modulates cytokine secretion." },
+                            { food: "Black Pepper", compound: "Piperine", action: "Enhances curcumin absorption, intrinsic anti-inflammatory effects." },
+                            { food: "Walnuts, Flaxseeds", compound: "ALA (Omega-3)", action: "Anti-inflammatory precursor." },
+                            { food: "Dark Leafy Greens", compound: "Flavonoids, Vit C", action: "Antioxidant, immune support." }
+                        ]
+                    }
+                },
+                foundational: {
+                    title: "Foundational Support: Other Key Nutrients",
+                    points: [
+                        "<strong>Calcium:</strong> Vital for bones. Good sources: Ragi, sesame seeds, moringa. Balance with iron: consume dairy/calcium supplements 1-2 hours away from iron-rich meals. Your slightly low calcium (8.75 mg/dL) reinforces this, but iron is the priority for co-consumption timing.",
+                        "<strong>Vitamin D:</strong> Aids calcium absorption. Primary source is sunlight. Discuss status with doctor.",
+                        "<strong>Protein:</strong> Essential for hemoglobin synthesis. Rich in lentils, legumes, millets. Your lowish urea levels reinforce need for adequate plant-protein.",
+                        "<strong>Other B-Vitamins (Folate, B12, B6):</strong> Folate from leafy greens, legumes. B6 from moringa, chickpeas. Discuss B12 status with doctor if diet is restrictive."
+                    ]
+                }
+            },
+            mealPlanSouth7Day: [
+                { day: 1, breakfast: "Ragi Idli (moringa) + Tomato Chutney", midSnack: "Pomegranate, Walnuts", lunch: "Bisi Bele Bath (spinach) + Koshambari", eveSnack: "Turmeric Milk (almond)", dinner: "Adai (dill) + Veg Ishtew" },
+                { day: 2, breakfast: "Pesarattu (methi) + Ginger-Garlic Chutney", midSnack: "Guava", lunch: "Millet Roti + Palak Dal", eveSnack: "Ginger-Lemon-Tulsi Tea", dinner: "Ragi Ganji (moringa)" },
+                { day: 3, breakfast: "Veg Upma (millet rava, spinach) + Sesame Seeds", midSnack: "Nuts & Dates", lunch: "Veg Sambar + Brown Rice", eveSnack: "Sprouted Moong Salad", dinner: "Moringa Lentil Subzi + Jowar Roti" },
+                { day: 4, breakfast: "Oats Uttapam (spinach) + Peanut Chutney", midSnack: "Amla/Orange", lunch: "Lemon Rice (brown) + Sundal", eveSnack: "Fresh Orange", dinner: "Veg Uttapam (beetroot)" },
+                { day: 5, breakfast: "Ragi Dosa (carrot) + Coconut-Ginger Chutney", midSnack: "Apple, Walnuts", lunch: "Rajma Masala + Foxtail Millet", eveSnack: "Turmeric Milk (almond)", dinner: "Mixed Veg Kootu + Bajra Roti" },
+                { day: 6, breakfast: "Pesarattu (kale) + Tomato Chutney", midSnack: "Pomegranate", lunch: "Spinach Dal Khichdi (millet)", eveSnack: "Ginger-Lemon-Tulsi Tea", dinner: "Ragi Mudde + Leafy Green Sambar" },
+                { day: 7, breakfast: "Ragi Idli (spinach) + Sambar", midSnack: "Nuts & Jaggery", lunch: "Bisi Bele Bath (moringa)", eveSnack: "Guava", dinner: "Adai (methi) + Aviyal" }
+            ],
+            mealSuggestionsSouth: {
+                breakfast: [
+                    { name: "Ragi Idli/Dosa (Fermented)", detail: "With moringa/spinach puree & turmeric in batter. Serve with ginger-coconut chutney & lemon.", rationale: "Fermented ragi for iron/calcium bioavailability. Moringa for iron & Vit C." },
+                    { name: "Pesarattu (Moong Dal Dosa)", detail: "With methi/kale in batter. Serve with ginger-garlic chutney & lemon.", rationale: "Moong dal for protein/iron. Methi is iron-rich." }
+                ],
+                lunch: [
+                     { name: "Bisi Bele Bath (Enhanced)", detail: "Brown rice/millet with spinach/moringa. Garnish with peanuts. Serve with koshambari (lemon).", rationale: "Nutrient-dense one-pot meal. Greens boost iron." },
+                     { name: "Millet Roti with Leafy Dal", detail: "Jowar/bajra/ragi roti. Dal with spinach/methi/moringa. Squeeze lemon on dal.", rationale: "Millets for iron/fiber. Leafy dal is iron & protein champion." }
+                ],
+                dinner: [
+                    { name: "Adai (Mixed Lentil Dosa)", detail: "With moringa/dill leaves. Serve with vegetable stew & jaggery.", rationale: "High protein & iron from mixed lentils." },
+                    { name: "Ragi Ganji/Porridge (Fortified)", detail: "Sprouted ragi flour with pureed spinach/moringa, turmeric, pepper. Top with nuts/seeds.", rationale: "Easy to digest. Ragi for calcium & iron." }
+                ],
+                snacks: [
+                    { name: "Sprouted Moong Salad", detail: "With tomato, onion, cucumber, pomegranate, lemon juice.", rationale: "Sprouting enhances nutrient bioavailability. High protein & Vit C." },
+                    { name: "Turmeric Milk (Haldi Doodh)", detail: "Warm milk (dairy/plant-based) with turmeric, black pepper, ginger. Time dairy away from iron meals.", rationale: "Potent anti-inflammatory." },
+                    { name: "Fresh Fruit (Guava, Pomegranate, Amla)", detail: "Excellent sources of Vitamin C and antioxidants.", rationale: "Vit C aids iron absorption." },
+                    { name: "Sundal (Boiled Legumes)", detail: "Chickpeas/black-eyed peas tempered with spices, coconut, lemon.", rationale: "High protein, fiber, iron." }
+                ]
+            },
+            mealPlanNorth7Day: [
+                { day: 1, breakfast: "Moong Dal Cheela (spinach) + Mint Chutney", midSnack: "Pomegranate, Walnuts", lunch: "Rajma Chawal (brown rice) + Green Salad", eveSnack: "Turmeric Milk (almond)", dinner: "Lauki Kofta (baked) + Phulkas" },
+                { day: 2, breakfast: "Veg Dalia (methi) + Lemon", midSnack: "Guava", lunch: "Palak Dal + Whole Wheat Roti", eveSnack: "Ginger-Lemon-Tulsi Tea", dinner: "Veg Khichdi (millet, spinach)" },
+                { day: 3, breakfast: "Methi Paratha + Yogurt (timed)", midSnack: "Nuts & Dates", lunch: "Chana Masala + Brown Rice", eveSnack: "Shakarkandi Chaat", dinner: "Dal Tadka + Mix Veg Sabzi (leafy)" },
+                { day: 4, breakfast: "Sprout Chaat + Lemon", midSnack: "Amla", lunch: "Dal Makhani (healthier) + Roti", eveSnack: "Fresh Orange", dinner: "Sarson ka Saag (seasonal) + Makki Roti" },
+                { day: 5, breakfast: "Besan Cheela (tomato) + Coriander Chutney", midSnack: "Apple, Almonds", lunch: "Mix Veg Curry + Bajra Roti", eveSnack: "Roasted Makhana", dinner: "Chhole (baked Bhature)" },
+                { day: 6, breakfast: "Oats Porridge (fruits, nuts)", midSnack: "Pomegranate", lunch: "Kadhi Pakora (baked) + Brown Rice", eveSnack: "Fruit Chaat", dinner: "Aloo Gobi + Roti + Dal" },
+                { day: 7, breakfast: "Moong Dal Cheela (carrot) + Tomato Chutney", midSnack: "Nuts & Jaggery", lunch: "Mattar Mushroom + Roti", eveSnack: "Veg Sticks & Hummus", dinner: "Baingan Bharta + Dal + Phulkas" }
+            ],
+            mealSuggestionsNorth: {
+                breakfast: [
+                    { name: "Moong Dal Cheela (Enhanced)", detail: "With spinach/methi/grated carrots in batter. Serve with mint-coriander chutney & lemon.", rationale: "Moong dal for protein/iron. Greens boost nutrients." },
+                    { name: "Vegetable Dalia (Broken Wheat)", detail: "With peas, carrots, spinach/moringa. Season with turmeric, cumin, ginger. Serve with lemon.", rationale: "Whole grain goodness, fiber, and vegetables." }
+                ],
+                lunch: [
+                     { name: "Rajma Chawal (Kidney Beans & Rice)", detail: "Kidney beans in onion-tomato gravy with ginger, garlic, turmeric. Serve with brown rice & lemon salad.", rationale: "Classic iron and protein source." },
+                     { name: "Palak Dal with Roti", detail: "Toor/moong dal with spinach. Temper with cumin, garlic. Serve with whole wheat/millet roti & lemon.", rationale: "Excellent iron from spinach and lentils." }
+                ],
+                dinner: [
+                    { name: "Lauki Kofta (Baked, Light Gravy)", detail: "Bottle gourd & gram flour koftas (baked) in tomato-onion gravy. Serve with phulkas.", rationale: "Lighter kofta option, good for digestion." },
+                    { name: "Vegetable Khichdi (Millet/Brown Rice)", detail: "Rice/millet with moong dal & mixed vegetables (spinach, carrots). Season with turmeric, ginger. Serve with lemon.", rationale: "Comforting, nutritious, and easy to digest." }
+                ],
+                snacks: [
+                    { name: "Shakarkandi Chaat (Sweet Potato)", detail: "Boiled/roasted sweet potato with lemon, chaat masala.", rationale: "Good source of Vit A, fiber." },
+                    { name: "Roasted Makhana (Fox Nuts)", detail: "Lightly roasted with black salt.", rationale: "Low calorie, good source of magnesium." },
+                    { name: "Vegetable Sticks with Hummus", detail: "Carrot, cucumber, bell pepper with chickpea dip (lemon & garlic).", rationale: "Fiber, vitamins, and protein/iron from hummus." }
+                ]
+            },
+            lifestyleMonitoring: {
+                lifestyle: [
+                    { title: "Stress Management", content: "Practice yoga, meditation, deep breathing, or spend time in nature to modulate stress and inflammation." },
+                    { title: "Adequate Sleep", content: "Aim for 7-9 hours of quality sleep per night for bodily repair and regulation of inflammation." },
+                    { title: "Regular Physical Activity", content: "Engage in moderate activities like brisk walking, yoga, cycling. Tailor to capacity, especially with anemia." }
+                ],
+                monitoring: [
+                    { title: "Follow-up Lab Tests", content: "Discuss re-testing ESR, Hb, MCV, MCH, Serum Iron, % Transferrin Saturation with your doctor after 3-6 months on the diet." },
+                    { title: "Symptom Tracking", content: "Note changes in energy levels, fatigue, and other symptoms. Improvements can be motivating." }
+                ],
+                longTerm: [
+                    { title: "Long-Term Dietary Approach", content: "Continue core principles. Emphasize dietary variety and rotation. Moderate aggressive iron focus once levels normalize under medical guidance." },
+                    { title: "Goitrogens Note", content: "Your thyroid is normal. For general awareness: moderate consumption of cooked cruciferous vegetables is healthy. Cooking reduces goitrogenic potential." }
+                ]
+            }
+        };
+
+        let charts = {}; // To store chart instances
+
+        function createChart(canvasId, label, dataValue, refLow, refHigh, unit) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (charts[canvasId]) {
+                charts[canvasId].destroy(); // Destroy existing chart if it exists
+            }
+            charts[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [label],
+                    datasets: [{
+                        label: 'Your Value',
+                        data: [dataValue],
+                        backgroundColor: (dataValue < refLow || dataValue > refHigh) && (refLow !== null && refHigh !== null) ? 'rgba(239, 68, 68, 0.7)' : 'rgba(16, 185, 129, 0.7)', // Red if out of range, Green if normal
+                        borderColor: (dataValue < refLow || dataValue > refHigh) && (refLow !== null && refHigh !== null) ? 'rgba(239, 68, 68, 1)' : 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.7
+                    }, {
+                        label: 'Ref. Low',
+                        data: [refLow],
+                        backgroundColor: 'rgba(251, 191, 36, 0.4)', // Lighter Amber for ref low
+                        borderColor: 'rgba(251, 191, 36, 0.8)',
+                        borderWidth: 1,
+                        hidden: refLow === null,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.7
+                    }, {
+                        label: 'Ref. High',
+                        data: [refHigh],
+                        backgroundColor: 'rgba(245, 158, 11, 0.4)', // Darker Amber for ref high
+                        borderColor: 'rgba(245, 158, 11, 0.8)',
+                        borderWidth: 1,
+                        hidden: refHigh === null,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Makes bars horizontal for better label reading if needed, but vertical is fine too
+                    scales: {
+                        x: { // Changed from y to x for bar chart
+                            beginAtZero: true,
+                            title: { display: true, text: unit }
+                        },
+                        y: { // Changed from x to y
+                             ticks: {
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.length > 15 ? label.substring(0,15) + '...' : label; // Label wrapping
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed.x !== null) { // Changed from y to x
+                                        label += context.parsed.x + ' ' + unit;
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderSnapshotCharts() {
+            const data = reportData.keyAbnormalValuesForChart;
+            createChart('esrChart', data[0].label, data[0].value, data[0].refLow, data[0].refHigh, data[0].unit);
+            createChart('hbChart', data[1].label, data[1].value, data[1].refLow, data[1].refHigh, data[1].unit);
+            createChart('serumIronChart', data[2].label, data[2].value, data[2].refLow, data[2].refHigh, data[2].unit);
+            createChart('transferrinSatChart', data[3].label, data[3].value, data[3].refLow, data[3].refHigh, data[3].unit);
+        }
+
+        function renderLabInsightsTable() {
+            const tbody = document.getElementById('labValuesTableBody');
+            tbody.innerHTML = ''; // Clear existing
+            reportData.labValues.forEach(item => {
+                const row = tbody.insertRow();
+                row.className = 'hover:bg-amber-50 cursor-pointer transition-colors duration-150';
+                row.insertCell().textContent = item.parameter;
+                row.insertCell().textContent = `${item.value} ${item.unit}`;
+                row.insertCell().textContent = item.refInterval;
+                
+                const statusCell = row.insertCell();
+                statusCell.textContent = item.status;
+                if (item.status === "High" || item.status === "Low") {
+                    statusCell.className = 'text-red-600 font-semibold';
+                } else {
+                    statusCell.className = 'text-green-600 font-semibold';
+                }
+
+                row.onclick = () => showLabDetail(item.parameter);
+            });
+        }
+
+        function showLabDetail(parameterName) {
+            const detail = reportData.labValues.find(p => p.parameter === parameterName);
+            const detailView = document.getElementById('labDetailView');
+            if (detail) {
+                document.getElementById('labDetailParam').textContent = detail.parameter;
+                document.getElementById('labDetailSignificance').innerHTML = `<strong>Clinical Significance:</strong> ${detail.significance || 'N/A'}`;
+                document.getElementById('labDetailDietImplication').innerHTML = `<strong>Key Dietary Implication:</strong> ${detail.dietImplication || 'N/A'}`;
+                detailView.classList.remove('hidden');
+            }
+        }
+        
+        function createAccordionItem(id, title, contentHtml, parentElementId, initiallyOpen = false) {
+            const parent = document.getElementById(parentElementId);
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'mb-2';
+
+            const button = document.createElement('button');
+            button.className = 'accordion-button';
+            button.innerHTML = `<span>${title}</span><span class="transform transition-transform duration-300 ${initiallyOpen ? 'rotate-180' : ''}">▼</span>`; // Down arrow
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.id = id;
+            contentDiv.className = 'accordion-content';
+            if (initiallyOpen) {
+                contentDiv.classList.add('open');
+            }
+            contentDiv.innerHTML = contentHtml;
+
+            button.onclick = () => {
+                contentDiv.classList.toggle('open');
+                button.querySelector('span:last-child').classList.toggle('rotate-180');
+            };
+
+            itemDiv.appendChild(button);
+            itemDiv.appendChild(contentDiv);
+            parent.appendChild(itemDiv);
+        }
+
+        function renderDietaryStrategyAccordions() {
+            // Core Principles
+            let corePrinciplesHtml = '<ul class="list-disc pl-5 space-y-2 text-gray-700">';
+            reportData.corePrinciples.forEach(p => {
+                corePrinciplesHtml += `<li><strong>${p.title}:</strong> ${p.content}</li>`;
+            });
+            corePrinciplesHtml += '</ul>';
+            createAccordionItem('corePrinciplesContent', 'Core Dietary Principles', corePrinciplesHtml, 'corePrinciplesAccordion', true);
+
+            // Nutrient Optimisation Accordion (parent for Iron, Inflammation, Foundational)
+            const nutrientOptParent = 'nutrientOptimisationAccordion';
+            
+            // Iron Optimization
+            let ironOptHtml = '<ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">';
+            reportData.nutrientOptimisation.iron.points.forEach(p => { ironOptHtml += `<li>${p}</li>`; });
+            ironOptHtml += '</ul>';
+            ironOptHtml += `<h4 class="text-md font-semibold text-emerald-600 mt-4 mb-2">Table 2: Iron-Rich Foods & Absorption Modulators (Sortable)</h4>`;
+            ironOptHtml += `<div class="table-container"><table class="min-w-full text-sm" id="${reportData.nutrientOptimisation.iron.table.id}"><thead><tr class="bg-amber-50">`;
+            reportData.nutrientOptimisation.iron.table.headers.forEach((header, index) => {
+                ironOptHtml += `<th class="p-2 border cursor-pointer" onclick="sortTable('${reportData.nutrientOptimisation.iron.table.id}', ${index})">${header} &#x2195;</th>`;
+            });
+            ironOptHtml += `</tr></thead><tbody>`;
+            reportData.nutrientOptimisation.iron.table.rows.forEach(item => {
+                ironOptHtml += `<tr class="border-b"><td class="p-2 border">${item.food}</td><td class="p-2 border">${item.iron}</td><td class="p-2 border">${item.vitC}</td><td class="p-2 border">${item.inhibitors}</td><td class="p-2 border">${item.mitigation}</td></tr>`;
+            });
+            ironOptHtml += '</tbody></table></div>';
+            createAccordionItem('ironOptContent', reportData.nutrientOptimisation.iron.title, ironOptHtml, nutrientOptParent);
+            
+            // Inflammation Control
+            let inflammationCtrlHtml = '<ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">';
+            reportData.nutrientOptimisation.inflammation.points.forEach(p => { inflammationCtrlHtml += `<li>${p}</li>`; });
+            inflammationCtrlHtml += '</ul>';
+            inflammationCtrlHtml += `<h4 class="text-md font-semibold text-emerald-600 mt-4 mb-2">Table 3: Key Anti-Inflammatory Foods & Spices</h4>`;
+            inflammationCtrlHtml += `<div class="table-container"><table class="min-w-full text-sm" id="${reportData.nutrientOptimisation.inflammation.table.id}"><thead><tr class="bg-amber-50">`;
+             reportData.nutrientOptimisation.inflammation.table.headers.forEach(header => {
+                inflammationCtrlHtml += `<th class="p-2 border">${header}</th>`;
+            });
+            inflammationCtrlHtml += `</tr></thead><tbody>`;
+            reportData.nutrientOptimisation.inflammation.table.rows.forEach(item => {
+                inflammationCtrlHtml += `<tr class="border-b"><td class="p-2 border">${item.food}</td><td class="p-2 border">${item.compound}</td><td class="p-2 border">${item.action}</td></tr>`;
+            });
+            inflammationCtrlHtml += '</tbody></table></div>';
+            createAccordionItem('inflammationCtrlContent', reportData.nutrientOptimisation.inflammation.title, inflammationCtrlHtml, nutrientOptParent);
+
+            // Foundational Nutrients
+            let foundationalNutrientsHtml = '<ul class="list-disc pl-5 space-y-2 text-gray-700">';
+            reportData.nutrientOptimisation.foundational.points.forEach(p => { foundationalNutrientsHtml += `<li>${p}</li>`; });
+            foundationalNutrientsHtml += '</ul>';
+            createAccordionItem('foundationalNutrientsContent', reportData.nutrientOptimisation.foundational.title, foundationalNutrientsHtml, nutrientOptParent);
+        }
+
+        function renderMealPlanTable(tbodyId, planData) {
+            const tbody = document.getElementById(tbodyId);
+            tbody.innerHTML = '';
+            planData.forEach(dayData => {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = dayData.day;
+                row.insertCell().textContent = dayData.breakfast;
+                row.insertCell().textContent = dayData.midSnack;
+                row.insertCell().textContent = dayData.lunch;
+                row.insertCell().textContent = dayData.eveSnack;
+                row.insertCell().textContent = dayData.dinner;
+            });
+        }
+        
+        function renderMealSuggestionsAccordions(parentElementId, suggestionsData) {
+            const parentElement = document.getElementById(parentElementId);
+            parentElement.innerHTML = ''; 
+            const mealTypes = ['breakfast', 'lunch', 'dinner', 'snacks'];
+            mealTypes.forEach(mealType => {
+                if (suggestionsData[mealType]) {
+                    let contentHtml = '<div class="space-y-3">';
+                    suggestionsData[mealType].forEach(suggestion => {
+                        contentHtml += `<div class="p-3 bg-amber-50 rounded-md shadow-sm">
+                                            <h5 class="font-semibold text-emerald-600">${suggestion.name}</h5>
+                                            <p class="text-xs sm:text-sm text-gray-600 mt-1">${suggestion.detail}</p>
+                                            <p class="text-xs sm:text-sm text-gray-500 mt-1 italic">Rationale: ${suggestion.rationale}</p>
+                                        </div>`;
+                    });
+                    contentHtml += '</div>';
+                    createAccordionItem(`${mealType}Suggestions${parentElementId}`, mealType.charAt(0).toUpperCase() + mealType.slice(1) + " Suggestions", contentHtml, parentElementId);
+                }
+            });
+        }
+        
+        function renderLifestyleAccordions() {
+            const parentElementId = 'lifestyleAccordionContainer';
+            document.getElementById(parentElementId).innerHTML = ''; 
+
+            let lifestyleHtml = '<ul class="list-disc pl-5 space-y-2 text-gray-700">';
+            reportData.lifestyleMonitoring.lifestyle.forEach(item => {
+                lifestyleHtml += `<li><strong>${item.title}:</strong> ${item.content}</li>`;
+            });
+            lifestyleHtml += '</ul>';
+            createAccordionItem('lifestyleContent', 'Complementary Lifestyle Strategies', lifestyleHtml, parentElementId, true);
+
+            let monitoringHtml = '<ul class="list-disc pl-5 space-y-2 text-gray-700">';
+            reportData.lifestyleMonitoring.monitoring.forEach(item => {
+                monitoringHtml += `<li><strong>${item.title}:</strong> ${item.content}</li>`;
+            });
+            monitoringHtml += '</ul>';
+            createAccordionItem('monitoringContent', 'Monitoring Progress', monitoringHtml, parentElementId);
+            
+            let longTermHtml = '<ul class="list-disc pl-5 space-y-2 text-gray-700">';
+            reportData.lifestyleMonitoring.longTerm.forEach(item => {
+                longTermHtml += `<li><strong>${item.title}:</strong> ${item.content}</li>`;
+            });
+            longTermHtml += '</ul>';
+            createAccordionItem('longTermContent', 'Long-Term Wellness & Considerations', longTermHtml, parentElementId);
+        }
+
+        function handleNav(sectionId) {
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionId).classList.remove('hidden');
+
+            document.querySelectorAll('#mainNav button').forEach(button => {
+                button.classList.remove('nav-button-active');
+                button.classList.add('nav-button-inactive');
+                if (button.dataset.section === sectionId) {
+                    button.classList.add('nav-button-active');
+                    button.classList.remove('nav-button-inactive');
+                }
+            });
+        }
+        
+        let sortDirections = {}; 
+        function sortTable(tableId, columnIndex) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+
+            const rows = Array.from(tbody.rows);
+            const headerCell = table.querySelector(`thead th:nth-child(${columnIndex + 1})`);
+            const currentDirection = sortDirections[`${tableId}-${columnIndex}`] || 'asc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+            
+            // Reset all column sort directions for this table
+            table.querySelectorAll('thead th').forEach((th, i) => {
+                sortDirections[`${tableId}-${i}`] = (i === columnIndex) ? newDirection : 'asc';
+                // Update visual indicator (optional)
+                let arrow = th.querySelector('.sort-arrow');
+                if (!arrow) {
+                    arrow = document.createElement('span');
+                    arrow.className = 'sort-arrow ml-1';
+                    th.appendChild(arrow);
+                }
+                if (i === columnIndex) {
+                    arrow.innerHTML = newDirection === 'asc' ? '&#9652;' : '&#9662;'; // Up/Down arrow
+                } else {
+                    arrow.innerHTML = '&#x2195;'; // Default up-down arrow
+                }
+            });
+            
+            rows.sort((rowA, rowB) => {
+                let valA = rowA.cells[columnIndex].textContent.trim();
+                let valB = rowB.cells[columnIndex].textContent.trim();
+
+                if (tableId === reportData.nutrientOptimisation.iron.table.id && columnIndex === 1) { // Iron column
+                    const parseIronValue = (str) => { const match = str.match(/([\d.]+)/); return match ? parseFloat(match[1]) : -Infinity; };
+                    valA = parseIronValue(valA);
+                    valB = parseIronValue(valB);
+                } else {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+                
+                if (valA < valB) return newDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return newDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSnapshotCharts();
+            renderLabInsightsTable();
+            renderDietaryStrategyAccordions();
+            renderMealPlanTable('mealPlanSouth7DayTableBody', reportData.mealPlanSouth7Day);
+            renderMealSuggestionsAccordions('mealSuggestionsSouthAccordion', reportData.mealSuggestionsSouth);
+            renderMealPlanTable('mealPlanNorth7DayTableBody', reportData.mealPlanNorth7Day);
+            renderMealSuggestionsAccordions('mealSuggestionsNorthAccordion', reportData.mealSuggestionsNorth);
+            renderLifestyleAccordions();
+
+            document.querySelectorAll('#mainNav button').forEach(button => {
+                button.addEventListener('click', () => {
+                    handleNav(button.dataset.section);
+                });
+            });
+            // Initial view
+            handleNav('snapshot');
+        });
+    </script>
+
+<script src="https://static.app/js/static.js" type="text/javascript"></script>
+</body>
+</html>
